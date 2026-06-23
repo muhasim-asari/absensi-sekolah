@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, Upload, CheckCircle, Loader2 } from 'lucide-react';
-import { auth } from '../lib/firebase';
 
 export default function StudentView({ user }: { user: any }) {
   const [image, setImage] = useState<string | null>(null);
@@ -55,7 +54,7 @@ export default function StudentView({ user }: { user: any }) {
     setSubmitting(true);
     setErrorDesc('');
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = localStorage.getItem('jwt_token');
       
       const now = new Date();
       const date = now.toISOString().split('T')[0];

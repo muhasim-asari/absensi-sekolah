@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Download, Users, Loader2, Image as ImageIcon } from 'lucide-react';
-import { auth } from '../lib/firebase';
 
 interface Log {
   id: number;
@@ -23,7 +22,7 @@ export default function TeacherView() {
     setLoading(true);
     setErrorDesc('');
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = localStorage.getItem('jwt_token');
       const res = await fetch('/api/admin/attendance', {
         headers: {
           'Authorization': `Bearer ${token}`

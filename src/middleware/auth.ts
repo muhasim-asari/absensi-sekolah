@@ -1,20 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
-import { adminAuth } from '../lib/firebase-admin.js';
-import { DecodedIdToken } from 'firebase-admin/auth';
-import { db } from '../db/index.js';
-import { users } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../lib/prisma.js';
+import { User } from '@prisma/client';
 
 export interface AuthRequest extends Request {
-  user?: DecodedIdToken;
-  dbUser?: typeof users.$inferSelect;
+  user?: Partial<User>;
+  dbUser?: User;
 }
+
+export const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_development';
 
 export const requireAuth = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Missing token' });
@@ -22,17 +22,21 @@ export const requireAuth = async (
 
   const token = authHeader.split('Bearer ')[1];
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    req.user = decodedToken;
+    const decodedToken = jwt.verify(token, JWT_SECRET) as any;
     
-    // Also fetch the DB user to verify role
-    const userRecords = await db.select().from(users).where(eq(users.uid, decodedToken.uid));
-    if (userRecords.length > 0) {
-       req.dbUser = userRecords[0];
+    const user = await prisma.user.findUnique({
+      where: { email: decodedToken.email }
+    });
+    
+    if (user) {
+       req.dbUser = user;
+       req.user = user;
+    } else {
+      return res.status(401).json({ error: 'Unauthorized: User not found' });
     }
     next();
   } catch (error) {
-    console.error('Error verifying Firebase ID token:', error);
+    console.error('Error verifying JWT token:', error);
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 };
@@ -41,7 +45,7 @@ export const requireTeacher = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   if (!req.dbUser || req.dbUser.role !== 'teacher') {
     return res.status(403).json({ error: 'Forbidden: Teachers only' });
   }

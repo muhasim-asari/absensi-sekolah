@@ -1,74 +1,61 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signInWithPopup, signOut } from 'firebase/auth';
-import { auth, googleAuthProvider } from '../lib/firebase';
 
 interface AuthContextType {
-  user: User | null;
-  dbUser: any | null;
+  user: any | null;
   loading: boolean;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
+  login: (token: string, user: any) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  dbUser: null,
   loading: true,
-  login: async () => {},
-  logout: async () => {},
+  login: () => {},
+  logout: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [dbUser, setDbUser] = useState<any | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
+    const fetchUser = async () => {
+      const token = localStorage.getItem('jwt_token');
+      if (token) {
         try {
-          const res = await fetch('/api/auth/sync', {
-            method: 'POST',
+          const res = await fetch('/api/auth/me', {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           });
           if (res.ok) {
             const data = await res.json();
-            setDbUser(data.user);
+            setUser(data.user);
+          } else {
+            localStorage.removeItem('jwt_token');
           }
         } catch (e) {
-          console.error("Failed to sync auth", e);
+          console.error("Failed to fetch user", e);
         }
-      } else {
-        setDbUser(null);
       }
       setLoading(false);
-    });
+    };
 
-    return unsubscribe;
+    fetchUser();
   }, []);
 
-  const login = async () => {
-    try {
-      await signInWithPopup(auth, googleAuthProvider);
-    } catch (error) {
-      console.error('Error logging in:', error);
-    }
+  const login = (token: string, user: any) => {
+    localStorage.setItem('jwt_token', token);
+    setUser(user);
   };
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
+  const logout = () => {
+    localStorage.removeItem('jwt_token');
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, dbUser, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
