@@ -91,7 +91,7 @@ export default function TeacherView() {
         body: JSON.stringify({ startDate, endDate })
       });
       if (!res.ok) throw new Error('Failed to delete data');
-      fetchLogs();
+      fetchLogsAndUsers();
     } catch (e: any) {
       alert(e.message);
     }
