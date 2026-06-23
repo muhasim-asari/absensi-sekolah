@@ -1,0 +1,6 @@
+{
+  "name": "School Attendance",
+  "description": "A simple school attendance application with location verification, image capture, and teacher Excel export capabilities.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
