@@ -90,7 +90,7 @@ app.post("/api/attendance", requireAuth, async (req: AuthRequest, res) => {
   if (!req.dbUser) return res.status(401).json({ error: "User not in DB" });
   
   try {
-    const { date, time, latitude, longitude, imageUrl } = req.body;
+    const { date, time, latitude, longitude, imageUrl, type } = req.body;
     
     const newLog = await prisma.attendanceLog.create({
       data: {
@@ -99,6 +99,7 @@ app.post("/api/attendance", requireAuth, async (req: AuthRequest, res) => {
         time,
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
+        type: type || 'berangkat',
         imageUrl
       }
     });
@@ -147,6 +148,7 @@ app.get("/api/admin/attendance", requireAuth, requireAdmin, async (req: AuthRequ
       time: log.time,
       latitude: log.latitude,
       longitude: log.longitude,
+      type: log.type,
       userId: log.user.id,
       userName: log.user.name,
       userEmail: log.user.email,

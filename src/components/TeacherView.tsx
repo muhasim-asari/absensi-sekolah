@@ -9,6 +9,7 @@ interface Log {
   time: string;
   latitude: number;
   longitude: number;
+  type: string;
   imageUrl: string | null;
 }
 
@@ -130,13 +131,14 @@ export default function TeacherView() {
   };
 
   const exportToExcel = () => {
-    const headers = ['Name', 'Email', 'Date', 'Time', 'Latitude', 'Longitude'];
+    const headers = ['Name', 'Email', 'Date', 'Time', 'Type', 'Latitude', 'Longitude'];
     const viewData = logs.map(log => 
       [
         `"${log.userName}"`,
         `"${log.userEmail}"`,
         `"${log.date}"`,
         `"${log.time}"`,
+        `"${log.type}"`,
         `"${log.latitude}"`,
         `"${log.longitude}"`
       ].join(',')
@@ -239,14 +241,15 @@ export default function TeacherView() {
                   <tr>
                     <th className="px-6 py-4 font-medium">Nama/Email</th>
                     <th className="px-6 py-4 font-medium">Waktu</th>
+                    <th className="px-6 py-4 font-medium">Jenis</th>
                     <th className="px-6 py-4 font-medium">Lokasi</th>
                     <th className="px-6 py-4 font-medium text-center">Foto</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loading && logs.length === 0 ? <tr><td colSpan={4} className="text-center py-6"><Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" /></td></tr> : ''}
+                  {loading && logs.length === 0 ? <tr><td colSpan={5} className="text-center py-6"><Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" /></td></tr> : ''}
                   {!loading && logs.length === 0 && (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Tidak ada data kehadiran.</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Tidak ada data kehadiran.</td></tr>
                   )}
                   {logs.map((log) => (
                     <tr key={log.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
@@ -257,6 +260,11 @@ export default function TeacherView() {
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 mb-1">{log.date}</span>
                         <p className="text-gray-900">{log.time}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2 py-1 rounded text-xs font-medium capitalize ${log.type === 'berangkat' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {log.type || 'berangkat'}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <button onClick={() => window.open(`https://www.google.com/maps?q=${log.latitude},${log.longitude}`, '_blank')} className="text-blue-600 hover:underline flex items-center gap-1 text-xs">
