@@ -20,7 +20,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const token = localStorage.getItem('jwt_token');
+      let token = null;
+      try {
+        token = localStorage.getItem('jwt_token');
+      } catch (e) {
+        console.warn('localStorage access denied');
+      }
+
       if (token) {
         try {
           const res = await fetch('/api/auth/me', {
@@ -32,7 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const data = await res.json();
             setUser(data.user);
           } else {
-            localStorage.removeItem('jwt_token');
+            try { localStorage.removeItem('jwt_token'); } catch (e) {}
           }
         } catch (e) {
           console.error("Failed to fetch user", e);
@@ -45,12 +51,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = (token: string, user: any) => {
-    localStorage.setItem('jwt_token', token);
+    try { localStorage.setItem('jwt_token', token); } catch (e) {}
     setUser(user);
   };
 
   const logout = () => {
-    localStorage.removeItem('jwt_token');
+    try { localStorage.removeItem('jwt_token'); } catch (e) {}
     setUser(null);
   };
 

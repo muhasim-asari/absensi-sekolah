@@ -54,7 +54,8 @@ export default function StudentView({ user }: { user: any }) {
     setSubmitting(true);
     setErrorDesc('');
     try {
-      const token = localStorage.getItem('jwt_token');
+      let token = null;
+      try { token = localStorage.getItem('jwt_token'); } catch (e) {}
       
       const now = new Date();
       const date = now.toISOString().split('T')[0];

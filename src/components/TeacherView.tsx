@@ -22,7 +22,9 @@ export default function TeacherView() {
     setLoading(true);
     setErrorDesc('');
     try {
-      const token = localStorage.getItem('jwt_token');
+      let token = null;
+      try { token = localStorage.getItem('jwt_token'); } catch (e) {}
+      
       const res = await fetch('/api/admin/attendance', {
         headers: {
           'Authorization': `Bearer ${token}`
