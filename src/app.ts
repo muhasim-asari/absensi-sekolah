@@ -1,5 +1,5 @@
 import express from "express";
-import { requireAuth, requireTeacher, AuthRequest, JWT_SECRET } from "./middleware/auth.js";
+import { requireAuth, requireAdmin, AuthRequest, JWT_SECRET } from "./middleware/auth.js";
 import { prisma } from "./lib/prisma.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -27,7 +27,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    const role = email === "hasim.visione@gmail.com" ? "teacher" : "student";
+    const role = email === "hasim.visione@gmail.com" ? "admin" : "teacher";
 
     const user = await prisma.user.create({
       data: {
@@ -65,6 +65,10 @@ app.post("/api/auth/login", async (req, res) => {
        return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    if (user.status !== "approved" && user.role !== "admin") {
+      return res.status(403).json({ error: "Akun Anda belum disetujui. Silakan tunggu persetujuan dari Admin." });
+    }
+
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     
     const { password: _, ...userWithoutPassword } = user;
@@ -81,7 +85,7 @@ app.get("/api/auth/me", requireAuth, async (req: AuthRequest, res) => {
   res.json({ user: userWithoutPassword });
 });
 
-// Submit attendance (students & teachers can do this for themselves)
+// Submit attendance (teachers & admins can do this for themselves)
 app.post("/api/attendance", requireAuth, async (req: AuthRequest, res) => {
   if (!req.dbUser) return res.status(401).json({ error: "User not in DB" });
   
@@ -107,9 +111,27 @@ app.post("/api/attendance", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // Get daily recap (Teacher only)
-app.get("/api/admin/attendance", requireAuth, requireTeacher, async (req: AuthRequest, res) => {
+app.get("/api/admin/attendance", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
   try {
+    const { startDate, endDate } = req.query;
+
+    // Auto cleanup data older than 2 months
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const deleteThreshold = twoMonthsAgo.toISOString().split('T')[0];
+    await prisma.attendanceLog.deleteMany({
+      where: { date: { lt: deleteThreshold } }
+    });
+
+    const whereClause: any = {};
+    if (startDate && endDate) {
+      whereClause.date = { gte: String(startDate), lte: String(endDate) };
+    } else if (startDate) {
+      whereClause.date = String(startDate);
+    }
+
     const logs = await prisma.attendanceLog.findMany({
+      where: whereClause,
       include: {
         user: true
       },
@@ -139,3 +161,92 @@ app.get("/api/admin/attendance", requireAuth, requireTeacher, async (req: AuthRe
 });
 
 export default app;
+
+// User Management (Admin Only)
+app.get("/api/admin/users", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    const usersWithoutPassword = users.map(u => {
+      const { password, ...rest } = u;
+      return rest;
+    });
+    res.json({ users: usersWithoutPassword });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/admin/users", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { email, password, name, role, status } = req.body;
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return res.status(400).json({ error: "Email exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name,
+        password: hashedPassword,
+        role: role || "teacher",
+        status: status || "approved"
+      }
+    });
+
+    res.json({ success: true, user });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put("/api/admin/users/:id", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { email, name, password, role, status } = req.body;
+    
+    const data: any = { email, name, role, status };
+    if (password) {
+      data.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: Number(id) },
+      data
+    });
+    
+    res.json({ success: true, user });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete("/api/admin/users/:id", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.attendanceLog.deleteMany({ where: { userId: Number(id) } });
+    await prisma.user.delete({ where: { id: Number(id) } });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Bulk Delete Attendance
+app.delete("/api/admin/attendance/bulk", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { startDate, endDate } = req.body;
+    if (!startDate || !endDate) return res.status(400).json({ error: "Missing ranges" });
+    
+    await prisma.attendanceLog.deleteMany({
+      where: {
+        date: { gte: startDate, lte: endDate }
+      }
+    });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+

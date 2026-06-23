@@ -52,7 +52,7 @@ export default function LoginView() {
           <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <UserIcon size={32} />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900">School Attendance</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Sistem Kehadiran</h1>
           <p className="text-gray-500">
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </p>

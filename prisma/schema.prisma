@@ -16,7 +16,8 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      String   @default("student")
+  role      String   @default("teacher")
+  status    String   @default("pending") // can be "pending", "approved", "rejected"
   createdAt DateTime @default(now())
 
   attendanceLogs AttendanceLog[]

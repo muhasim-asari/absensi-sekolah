@@ -41,13 +41,13 @@ export const requireAuth = async (
   }
 };
 
-export const requireTeacher = async (
+export const requireAdmin = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<any> => {
-  if (!req.dbUser || req.dbUser.role !== 'teacher') {
-    return res.status(403).json({ error: 'Forbidden: Teachers only' });
+  if (!req.dbUser || req.dbUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Admins only' });
   }
   next();
 };

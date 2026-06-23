@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, Upload, CheckCircle, Loader2 } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 export default function StudentView({ user }: { user: any }) {
   const [image, setImage] = useState<string | null>(null);
@@ -30,14 +31,28 @@ export default function StudentView({ user }: { user: any }) {
     }
   }, []);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        setSubmitting(true);
+        const options = {
+          maxSizeMB: 0.07, // 70kb
+          maxWidthOrHeight: 800,
+          useWebWorker: true
+        };
+        const compressedFile = await imageCompression(file, options);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImage(reader.result as string);
+          setSubmitting(false);
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        console.error(error);
+        setErrorDesc("Gagal kompres gambar.");
+        setSubmitting(false);
+      }
     }
   };
 
