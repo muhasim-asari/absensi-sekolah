@@ -26,6 +26,11 @@ export default function LoginView() {
         body: JSON.stringify(body)
       });
 
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error(`Server returned a non-JSON response. Ensure your backend is running.`);
+      }
+
       const data = await res.json();
 
       if (res.ok) {

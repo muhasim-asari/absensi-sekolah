@@ -34,7 +34,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               'Authorization': `Bearer ${token}`
             }
           });
-          if (res.ok) {
+          
+          const contentType = res.headers.get("content-type");
+          if (res.ok && contentType && contentType.includes("application/json")) {
             const data = await res.json();
             setUser(data.user);
           } else {

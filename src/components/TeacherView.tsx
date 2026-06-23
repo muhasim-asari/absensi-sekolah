@@ -33,6 +33,12 @@ export default function TeacherView() {
       if (!res.ok) {
         throw new Error('Failed to fetch data');
       }
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error(`Server returned a non-JSON response. Ensure your backend is running.`);
+      }
+
       const data = await res.json();
       setLogs(data.logs);
     } catch (e: any) {
