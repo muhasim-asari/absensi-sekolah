@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, MapPin, Upload, CheckCircle, Loader2 } from 'lucide-react';
+import { Camera, MapPin, Upload, CheckCircle, Loader2, Clock } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
 export default function StudentView({ user }: { user: any }) {
@@ -9,10 +9,35 @@ export default function StudentView({ user }: { user: any }) {
   const [success, setSuccess] = useState(false);
   const [errorDesc, setErrorDesc] = useState('');
   const [type, setType] = useState('berangkat');
+  const [myLogs, setMyLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const fetchMyLogs = async () => {
+    setLoadingLogs(true);
+    try {
+        let token = null;
+        try { token = localStorage.getItem('jwt_token'); } catch (e) {}
+        const now = new Date();
+        // Shift adjusting for timezone offset
+        const date = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        
+        const res = await fetch('/api/attendance/me?date=' + date, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setMyLogs(data.logs || []);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setLoadingLogs(false);
+    }
+  };
+
   useEffect(() => {
+    fetchMyLogs();
+    
     // Get location on mount
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -98,6 +123,7 @@ export default function StudentView({ user }: { user: any }) {
       }
 
       setSuccess(true);
+      fetchMyLogs();
     } catch (e: any) {
       setErrorDesc(e.message || 'Something went wrong');
     } finally {
@@ -107,16 +133,41 @@ export default function StudentView({ user }: { user: any }) {
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-sm space-y-4">
-        <CheckCircle className="w-16 h-16 text-green-500" />
-        <h2 className="text-2xl font-semibold text-gray-900">Kehadiran Tersimpan!</h2>
-        <p className="text-gray-500">Anda telah berhasil mencatat kehadiran untuk hari ini.</p>
-        <button 
-          onClick={() => { setSuccess(false); setImage(null); }}
-          className="mt-4 px-6 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition"
-        >
-          Check In Lagi
-        </button>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-sm space-y-4">
+          <CheckCircle className="w-16 h-16 text-green-500" />
+          <h2 className="text-2xl font-semibold text-gray-900">Kehadiran Tersimpan!</h2>
+          <p className="text-gray-500">Anda telah berhasil mencatat kehadiran untuk hari ini.</p>
+          <button 
+            onClick={() => { setSuccess(false); setImage(null); }}
+            className="mt-4 px-6 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition"
+          >
+            Check In Lagi
+          </button>
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4">Laporan Kehadiran Hari Ini</h2>
+          {myLogs.length === 0 ? (
+            <p className="text-gray-500 text-sm text-center py-4">Belum ada data kehadiran hari ini.</p>
+          ) : (
+            <div className="space-y-3">
+              {myLogs.map((log, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${log.type === 'berangkat' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                      <Clock size={16} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 capitalize">{log.type}</p>
+                      <p className="text-xs text-gray-500">{log.date} at {log.time}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -229,6 +280,31 @@ export default function StudentView({ user }: { user: any }) {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <h2 className="text-xl font-semibold mb-4">Laporan Kehadiran Hari Ini</h2>
+        {loadingLogs ? (
+          <div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+        ) : myLogs.length === 0 ? (
+          <p className="text-gray-500 text-sm text-center py-4">Belum ada data kehadiran hari ini.</p>
+        ) : (
+          <div className="space-y-3">
+            {myLogs.map((log, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${log.type === 'berangkat' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                    <Clock size={16} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 capitalize">{log.type}</p>
+                    <p className="text-xs text-gray-500">{log.date} at {log.time}</p>
+                  </div>
+                </div>
+              </div>
+             ))}
+          </div>
+        )}
       </div>
     </div>
   );

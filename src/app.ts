@@ -111,6 +111,29 @@ app.post("/api/attendance", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// Get user's own attendance
+app.get("/api/attendance/me", requireAuth, async (req: AuthRequest, res) => {
+  if (!req.dbUser) return res.status(401).json({ error: "User not in DB" });
+  
+  try {
+    const { date } = req.query;
+    const whereClause: any = { userId: req.dbUser.id };
+    
+    if (date) {
+      whereClause.date = String(date);
+    }
+    
+    const logs = await prisma.attendanceLog.findMany({
+      where: whereClause,
+      orderBy: { time: 'desc' } // Most recent first
+    });
+    
+    res.json({ logs });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Get daily recap (Teacher only)
 app.get("/api/admin/attendance", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
   try {
